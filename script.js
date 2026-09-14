@@ -1,0 +1,1 @@
+document.querySelector('.menu')?.addEventListener('click',function(){var n=document.querySelector('.nav nav');n.classList.toggle('open');});
