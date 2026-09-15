@@ -1,0 +1,5 @@
+{
+  "name": "sparkle-star-payments",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-14"
+}
