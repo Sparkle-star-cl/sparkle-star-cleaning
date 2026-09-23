@@ -11,7 +11,7 @@ export default {
     }
 
 
-    if (request.method === "POST" && url.pathname === "/create-booking-session") {
+    if (request.method === "POST" && url.pathname === "/create-booking") {
       try {
         const body = await request.json();
         const customerName = String(body.customerName || "").trim();
@@ -24,9 +24,11 @@ export default {
         const startTime = String(body.startTime || "");
         const hours = Number(body.hours);
         const amount = Number(body.amount);
-        const rates = { regular: 20, oneoff: 23, deep: 25 };\n        const BOOKINGS_OPEN_DATE = "2026-10-08";
+        const rates = { regular: 20, oneoff: 23, deep: 25 };
+        const BOOKINGS_OPEN_DATE = "2026-10-08";
 
-        if (!customerName || !email || !address || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);\n        if (date < BOOKINGS_OPEN_DATE) return json({ error: "Online bookings open from 8 October 2026." }, 400);
+        if (!customerName || !email || !address || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);
+        if (date < BOOKINGS_OPEN_DATE) return json({ error: "Online bookings open from 8 October 2026." }, 400);
         if (!rates[service]) return json({ error: "End of Tenancy bookings require a quote." }, 400);
         if (!Number.isInteger(bathrooms) || bathrooms < 1 || bathrooms > 10) return json({ error: "Please choose a valid number of bathrooms." }, 400);
         if (!Number.isFinite(hours) || hours < 3 || hours > 12) return json({ error: "Invalid cleaning duration." }, 400);
@@ -41,35 +43,54 @@ export default {
         const close = day === 6 ? 960 : 1020;
         if (day === 0 || minutes < open || endMinutes > close) return json({ error: "That time is outside our booking hours." }, 400);
 
-        if (!env.STRIPE_SECRET_KEY) return json({ error: "Payment system is not configured." }, 500);
+        const serviceName = service === "regular" ? "Regular Cleaning" : service === "oneoff" ? "One-Off Cleaning" : "Deep Cleaning";
+        const estimate = "£" + Math.round(amount).toLocaleString("en-GB");
+        const businessEmail = "hello@sparklestarcleaning.co.uk";
+        const subject = "Sparkle Star Cleaning booking — " + date + " " + startTime;
+        const customerText = `Hello ${customerName},
 
-        const stripeBody = new URLSearchParams();
-        stripeBody.append("line_items[0][price_data][currency]", "gbp");
-        stripeBody.append("line_items[0][price_data][product_data][name]", "Sparkle Star Cleaning — " + service);
-        stripeBody.append("line_items[0][price_data][product_data][description]", hours + " hour cleaning · " + date + " at " + startTime);
-        stripeBody.append("line_items[0][price_data][unit_amount]", String(Math.round(amount * 100)));
-        stripeBody.append("line_items[0][quantity]", "1");
-        stripeBody.append("mode", "payment");
-        stripeBody.append("customer_email", email);
-        stripeBody.append("success_url", new URL(request.url).origin + "/paid?session_id={CHECKOUT_SESSION_ID}");
-        stripeBody.append("cancel_url", WEBSITE_URL + "/?booking=cancelled");
-        stripeBody.append("metadata[booking]", "true");
-        stripeBody.append("metadata[customer_name]", customerName);
-        stripeBody.append("metadata[customer_email]", email);
-        stripeBody.append("metadata[address]", address.slice(0, 500));
-        stripeBody.append("metadata[service]", service);
-        stripeBody.append("metadata[bedrooms]", bedrooms);
-        stripeBody.append("metadata[bathrooms]", String(bathrooms));
-        stripeBody.append("metadata[date]", date);
-        stripeBody.append("metadata[start_time]", startTime);
-        stripeBody.append("metadata[hours]", String(hours));
+Thank you for booking with Sparkle Star Cleaning.
 
-        const stripeResponse = await stripeRequest(env, "/checkout/sessions", "POST", stripeBody);
-        const stripeData = await stripeResponse.json();
-        if (!stripeResponse.ok) return json({ error: stripeData.error?.message || "Stripe could not create the payment." }, 400);
-        return json({ success: true, payment_url: stripeData.url, session_id: stripeData.id });
+Booking details:
+Service: ${serviceName}
+Date: ${date}
+Start time: ${startTime}
+Estimated duration: ${hours} hours
+Property: ${bedrooms}
+Bathrooms: ${bathrooms}
+Address: ${address}
+Estimated price: ${estimate}
+
+No payment is required at the time of booking. After your cleaning is completed, we will send you a secure payment link for the final amount.
+
+Thank you,
+Sparkle Star Cleaning
+`;
+
+        let emailSent = false;
+        if (env.RESEND_API_KEY) {
+          const emailResponse = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: "Sparkle Star Cleaning <hello@sparklestarcleaning.co.uk>",
+              to: [email],
+              cc: [businessEmail],
+              subject,
+              text: customerText
+            })
+          });
+          emailSent = emailResponse.ok;
+        }
+
+        return json({
+          success: true,
+          message: emailSent
+            ? "Booking received. No payment is required now. We have emailed your booking details and estimated price."
+            : "Booking received. No payment is required now. We will confirm your booking and email your booking details and estimated price."
+        });
       } catch {
-        return json({ error: "Something went wrong creating the booking." }, 500);
+        return json({ error: "Something went wrong submitting the booking." }, 500);
       }
     }
 
