@@ -10,6 +10,69 @@ export default {
       });
     }
 
+
+    if (request.method === "POST" && url.pathname === "/create-booking-session") {
+      try {
+        const body = await request.json();
+        const customerName = String(body.customerName || "").trim();
+        const email = String(body.email || "").trim();
+        const address = String(body.address || "").trim();
+        const service = String(body.service || "");
+        const bedrooms = String(body.bedrooms || "");
+        const bathrooms = Number(body.bathrooms || 1);
+        const date = String(body.date || "");
+        const startTime = String(body.startTime || "");
+        const hours = Number(body.hours);
+        const amount = Number(body.amount);
+        const rates = { regular: 20, oneoff: 23, deep: 25 };
+
+        if (!customerName || !email || !address || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);
+        if (!rates[service]) return json({ error: "End of Tenancy bookings require a quote." }, 400);
+        if (!Number.isInteger(bathrooms) || bathrooms < 1 || bathrooms > 10) return json({ error: "Please choose a valid number of bathrooms." }, 400);
+        if (!Number.isFinite(hours) || hours < 3 || hours > 12) return json({ error: "Invalid cleaning duration." }, 400);
+        if (!Number.isFinite(amount) || amount !== Math.round(hours * rates[service] * 100) / 100) return json({ error: "The booking price could not be verified." }, 400);
+
+        const chosen = new Date(date + "T" + startTime + ":00");
+        if (Number.isNaN(chosen.getTime())) return json({ error: "Invalid booking date or time." }, 400);
+        const day = chosen.getDay();
+        const minutes = chosen.getHours() * 60 + chosen.getMinutes();
+        const endMinutes = minutes + hours * 60;
+        const open = day === 6 ? 600 : 480;
+        const close = day === 6 ? 960 : 1020;
+        if (day === 0 || minutes < open || endMinutes > close) return json({ error: "That time is outside our booking hours." }, 400);
+
+        if (!env.STRIPE_SECRET_KEY) return json({ error: "Payment system is not configured." }, 500);
+
+        const stripeBody = new URLSearchParams();
+        stripeBody.append("line_items[0][price_data][currency]", "gbp");
+        stripeBody.append("line_items[0][price_data][product_data][name]", "Sparkle Star Cleaning — " + service);
+        stripeBody.append("line_items[0][price_data][product_data][description]", hours + " hour cleaning · " + date + " at " + startTime);
+        stripeBody.append("line_items[0][price_data][unit_amount]", String(Math.round(amount * 100)));
+        stripeBody.append("line_items[0][quantity]", "1");
+        stripeBody.append("mode", "payment");
+        stripeBody.append("customer_email", email);
+        stripeBody.append("success_url", new URL(request.url).origin + "/paid?session_id={CHECKOUT_SESSION_ID}");
+        stripeBody.append("cancel_url", WEBSITE_URL + "/?booking=cancelled");
+        stripeBody.append("metadata[booking]", "true");
+        stripeBody.append("metadata[customer_name]", customerName);
+        stripeBody.append("metadata[customer_email]", email);
+        stripeBody.append("metadata[address]", address.slice(0, 500));
+        stripeBody.append("metadata[service]", service);
+        stripeBody.append("metadata[bedrooms]", bedrooms);
+        stripeBody.append("metadata[bathrooms]", String(bathrooms));
+        stripeBody.append("metadata[date]", date);
+        stripeBody.append("metadata[start_time]", startTime);
+        stripeBody.append("metadata[hours]", String(hours));
+
+        const stripeResponse = await stripeRequest(env, "/checkout/sessions", "POST", stripeBody);
+        const stripeData = await stripeResponse.json();
+        if (!stripeResponse.ok) return json({ error: stripeData.error?.message || "Stripe could not create the payment." }, 400);
+        return json({ success: true, payment_url: stripeData.url, session_id: stripeData.id });
+      } catch {
+        return json({ error: "Something went wrong creating the booking." }, 500);
+      }
+    }
+
     if (request.method === "POST" && url.pathname === "/create-payment") {
       try {
         const body = await request.json();
