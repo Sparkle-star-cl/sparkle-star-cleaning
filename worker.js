@@ -46,27 +46,42 @@ export default {
         const serviceName = service === "regular" ? "Regular Cleaning" : service === "oneoff" ? "One-Off Cleaning" : "Deep Cleaning";
         const estimate = "£" + Math.round(amount).toLocaleString("en-GB");
         const businessEmail = "hello@sparklestarcleaning.co.uk";
-        const subject = "Sparkle Star Cleaning booking — " + date + " " + startTime;
-        const customerText = `Hello ${customerName},
+        const subject = "Sparkle Star Cleaning – Booking Confirmation";
+        const firstName = customerName.split(/\s+/)[0] || customerName;
+        const customerText = `Dear ${firstName},
 
-Thank you for booking with Sparkle Star Cleaning.
+Thank you for choosing Sparkle Star Cleaning. We are pleased to confirm that we have received your cleaning booking request.
 
-Booking details:
-Customer phone: ${phone}
+BOOKING DETAILS
+Customer: ${customerName}
+Phone: ${phone}
+Email: ${email}
 Service: ${serviceName}
+Property: ${bedrooms}
+Bathrooms: ${bathrooms}
 Date: ${date}
 Start time: ${startTime}
 Estimated duration: ${hours} hours
-Property: ${bedrooms}
-Bathrooms: ${bathrooms}
 Estimated price: ${estimate}
 
-Please reply to this email with the full address where the cleaner should go, so we can confirm the correct location before the cleaning.
+ADDRESS CONFIRMATION REQUIRED
+For security and accuracy, we do not request the cleaning address through our online booking form.
 
-No payment is required at the time of booking. After your cleaning is completed, we will send you a secure payment link for the final amount.
+Please reply to this email with the full address where you would like the cleaner to attend, including the postcode.
 
-Thank you,
+Once we receive the address, we will confirm the location and finalise your booking details.
+
+PAYMENT
+No payment is required at the time of booking.
+
+Once the cleaning service has been completed, we will send you a secure payment link for the final amount. You can pay securely online.
+
+Changes or questions can be sent by replying to this email.
+
+Kind regards,
 Sparkle Star Cleaning
+London
+hello@sparklestarcleaning.co.uk
 `;
 
         let emailSent = false;
@@ -101,13 +116,16 @@ Sparkle Star Cleaning
         const body = await request.json();
         const password = String(body.password || "");
         const customerName = String(body.customerName || "").trim();
+        const customerEmail = String(body.customerEmail || "").trim();
         const amount = Number(body.amount);
 
         if (!env.ADMIN_PASSWORD) return json({ error: "Admin password is not configured yet." }, 500);
         if (password !== env.ADMIN_PASSWORD) return json({ error: "Incorrect admin password." }, 401);
         if (!customerName) return json({ error: "Please enter the customer's name." }, 400);
+        if (!customerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) return json({ error: "Please enter a valid customer email address." }, 400);
         if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) return json({ error: "Please enter a valid amount in pounds." }, 400);
         if (!env.STRIPE_SECRET_KEY) return json({ error: "Stripe key is not configured yet." }, 500);
+        if (!env.RESEND_API_KEY) return json({ error: "Resend email is not configured yet." }, 500);
 
         const stripeBody = new URLSearchParams();
         stripeBody.append("line_items[0][price_data][currency]", "gbp");
@@ -119,14 +137,58 @@ Sparkle Star Cleaning
         stripeBody.append("success_url", `${new URL(request.url).origin}/paid?session_id={CHECKOUT_SESSION_ID}`);
         stripeBody.append("cancel_url", `${WEBSITE_URL}/?payment=cancelled`);
         stripeBody.append("metadata[customer_name]", customerName);
+        stripeBody.append("metadata[customer_email]", customerEmail);
 
         const stripeResponse = await stripeRequest(env, "/checkout/sessions", "POST", stripeBody);
         const stripeData = await stripeResponse.json();
         if (!stripeResponse.ok) return json({ error: stripeData.error?.message || "Stripe could not create the payment." }, 400);
 
-        return json({ success: true, payment_url: stripeData.url, session_id: stripeData.id });
+        const paymentUrl = stripeData.url;
+        const paymentAmount = "£" + (Math.round(amount * 100) / 100).toFixed(2);
+        const firstName = customerName.split(/\s+/)[0] || customerName;
+        const paymentEmail = `Dear ${firstName},
+
+Thank you for choosing Sparkle Star Cleaning.
+
+Your cleaning service has now been completed. Please use the secure payment link below to pay the final amount of ${paymentAmount}.
+
+PAYMENT DETAILS
+Amount due: ${paymentAmount}
+
+SECURE PAYMENT
+${paymentUrl}
+
+You can pay securely online by card or with any supported payment method shown at checkout.
+
+Once payment is completed, you will be taken to a confirmation page where you can leave a rating and feedback for Sparkle Star Cleaning.
+
+If you have any questions about the payment, please reply to this email.
+
+Kind regards,
+Sparkle Star Cleaning
+London
+hello@sparklestarcleaning.co.uk
+`;
+
+        const emailResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from: "Sparkle Star Cleaning <hello@sparklestarcleaning.co.uk>",
+            to: [customerEmail],
+            cc: ["hello@sparklestarcleaning.co.uk"],
+            subject: "Sparkle Star Cleaning – Payment Link",
+            text: paymentEmail
+          })
+        });
+
+        if (!emailResponse.ok) {
+          return json({ error: "The payment link was created, but the email could not be sent. Please check Resend before trying again." }, 502);
+        }
+
+        return json({ success: true, payment_url: paymentUrl, session_id: stripeData.id, email_sent: true });
       } catch {
-        return json({ error: "Something went wrong creating the payment." }, 500);
+        return json({ error: "Something went wrong creating or sending the payment link." }, 500);
       }
     }
 
@@ -210,5 +272,5 @@ function json(data, status = 200) { return new Response(JSON.stringify(data), { 
 function escapeHtml(value) { return String(value).replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
 
 function adminPage() {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sparkle Star Cleaning — Payment</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f8fc;margin:0;padding:24px;color:#222}.card{max-width:430px;margin:30px auto;background:white;padding:24px;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.08)}h1{font-size:24px}label{display:block;margin-top:16px;font-weight:600}input{width:100%;box-sizing:border-box;padding:13px;margin-top:7px;border:1px solid #ccc;border-radius:10px;font-size:16px}button{width:100%;margin-top:22px;padding:14px;border:0;border-radius:10px;background:#111;color:white;font-size:17px;font-weight:600}#result{margin-top:20px;word-break:break-word}a{color:#1769ff}.note{color:#666;font-size:14px}</style></head><body><div class="card"><h1>✨ Sparkle Star Cleaning</h1><p class="note">Create a secure payment link after a cleaning is completed.</p><label>Admin password</label><input id="password" type="password"><label>Customer name</label><input id="customerName" type="text"><label>Final amount (£)</label><input id="amount" type="number" min="1" step="0.01"><button onclick="createPayment()">Create Payment Link</button><div id="result"></div></div><script>async function createPayment(){const result=document.getElementById('result');result.textContent='Creating secure payment link...';try{const r=await fetch('/create-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('password').value,customerName:document.getElementById('customerName').value,amount:document.getElementById('amount').value})});const d=await r.json();if(!r.ok){result.textContent=d.error;return}result.innerHTML='<strong>Payment link created!</strong><br><br><a href="'+d.payment_url+'" target="_blank">Open payment page</a><br><br><button id="copy">Copy Payment Link</button>';document.getElementById('copy').onclick=async()=>{await navigator.clipboard.writeText(d.payment_url);document.getElementById('copy').textContent='Copied!'}}catch{result.textContent='Unable to contact the payment system.'}}</script></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sparkle Star Cleaning — Payment</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f7f8fc;margin:0;padding:24px;color:#222}.card{max-width:430px;margin:30px auto;background:white;padding:24px;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.08)}h1{font-size:24px}label{display:block;margin-top:16px;font-weight:600}input{width:100%;box-sizing:border-box;padding:13px;margin-top:7px;border:1px solid #ccc;border-radius:10px;font-size:16px}button{width:100%;margin-top:22px;padding:14px;border:0;border-radius:10px;background:#111;color:white;font-size:17px;font-weight:600}#result{margin-top:20px;word-break:break-word}a{color:#1769ff}.note{color:#666;font-size:14px}</style></head><body><div class="card"><h1>✨ Sparkle Star Cleaning</h1><p class="note">Finish a cleaning and automatically create and email the secure payment link to the customer.</p><label>Admin password</label><input id="password" type="password"><label>Customer name</label><input id="customerName" type="text"><label>Customer email</label><input id="customerEmail" type="email"><label>Final amount (£)</label><input id="amount" type="number" min="1" step="0.01"><button onclick="createPayment()">Finish Cleaning &amp; Send Payment Link</button><div id="result"></div></div><script>async function createPayment(){const result=document.getElementById('result');result.textContent='Creating secure payment link and sending email...';try{const r=await fetch('/create-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('password').value,customerName:document.getElementById('customerName').value,customerEmail:document.getElementById('customerEmail').value,amount:document.getElementById('amount').value})});const d=await r.json();if(!r.ok){result.textContent=d.error;return}result.innerHTML='<strong>Done — the payment link was created and emailed to the customer.</strong><br><br><a href="'+d.payment_url+'" target="_blank">Open payment page</a>'; }catch{result.textContent='Unable to contact the payment system.'}}</script></body></html>`;
 }
