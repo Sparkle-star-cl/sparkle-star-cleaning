@@ -24,9 +24,9 @@ export default {
         const startTime = String(body.startTime || "");
         const hours = Number(body.hours);
         const amount = Number(body.amount);
-        const rates = { regular: 20, oneoff: 23, deep: 25 };
+        const rates = { regular: 20, oneoff: 23, deep: 25 };\n        const BOOKINGS_OPEN_DATE = "2026-10-08";
 
-        if (!customerName || !email || !address || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);
+        if (!customerName || !email || !address || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);\n        if (date < BOOKINGS_OPEN_DATE) return json({ error: "Online bookings open from 8 October 2026." }, 400);
         if (!rates[service]) return json({ error: "End of Tenancy bookings require a quote." }, 400);
         if (!Number.isInteger(bathrooms) || bathrooms < 1 || bathrooms > 10) return json({ error: "Please choose a valid number of bathrooms." }, 400);
         if (!Number.isFinite(hours) || hours < 3 || hours > 12) return json({ error: "Invalid cleaning duration." }, 400);
