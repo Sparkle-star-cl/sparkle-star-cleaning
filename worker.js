@@ -17,7 +17,6 @@ export default {
         const customerName = String(body.customerName || "").trim();
         const phone = String(body.phone || "").trim();
         const email = String(body.email || "").trim();
-        const address = String(body.address || "").trim();
         const service = String(body.service || "");
         const bedrooms = String(body.bedrooms || "");
         const bathrooms = Number(body.bathrooms || 1);
@@ -28,7 +27,7 @@ export default {
         const rates = { regular: 20, oneoff: 23, deep: 25 };
         const BOOKINGS_OPEN_DATE = "2026-10-08";
 
-        if (!customerName || !phone || !email || !address || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);
+        if (!customerName || !phone || !email || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);
         if (date < BOOKINGS_OPEN_DATE) return json({ error: "Online bookings open from 8 October 2026." }, 400);
         if (!rates[service]) return json({ error: "End of Tenancy bookings require a quote." }, 400);
         if (!Number.isInteger(bathrooms) || bathrooms < 1 || bathrooms > 10) return json({ error: "Please choose a valid number of bathrooms." }, 400);
@@ -60,8 +59,9 @@ Start time: ${startTime}
 Estimated duration: ${hours} hours
 Property: ${bedrooms}
 Bathrooms: ${bathrooms}
-Address: ${address}
 Estimated price: ${estimate}
+
+Please reply to this email with the full address where the cleaner should go, so we can confirm the correct location before the cleaning.
 
 No payment is required at the time of booking. After your cleaning is completed, we will send you a secure payment link for the final amount.
 
