@@ -15,6 +15,7 @@ export default {
       try {
         const body = await request.json();
         const customerName = String(body.customerName || "").trim();
+        const phone = String(body.phone || "").trim();
         const email = String(body.email || "").trim();
         const address = String(body.address || "").trim();
         const service = String(body.service || "");
@@ -27,7 +28,7 @@ export default {
         const rates = { regular: 20, oneoff: 23, deep: 25 };
         const BOOKINGS_OPEN_DATE = "2026-10-08";
 
-        if (!customerName || !email || !address || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);
+        if (!customerName || !phone || !email || !address || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);
         if (date < BOOKINGS_OPEN_DATE) return json({ error: "Online bookings open from 8 October 2026." }, 400);
         if (!rates[service]) return json({ error: "End of Tenancy bookings require a quote." }, 400);
         if (!Number.isInteger(bathrooms) || bathrooms < 1 || bathrooms > 10) return json({ error: "Please choose a valid number of bathrooms." }, 400);
@@ -52,6 +53,7 @@ export default {
 Thank you for booking with Sparkle Star Cleaning.
 
 Booking details:
+Customer phone: ${phone}
 Service: ${serviceName}
 Date: ${date}
 Start time: ${startTime}
