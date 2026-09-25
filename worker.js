@@ -4,6 +4,18 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": WEBSITE_URL,
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Max-Age": "86400"
+        }
+      });
+    }
+
     if (request.method === "GET" && url.pathname === "/admin") {
       return new Response(adminPage(), {
         headers: { "Content-Type": "text/html; charset=UTF-8" }
@@ -268,7 +280,7 @@ async function saveRating(request, env) {
   } catch { return json({ error: "Unable to save the rating." }, 500); }
 }
 
-function json(data, status = 200) { return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=UTF-8", "Cache-Control": "no-store" } }); }
+function json(data, status = 200) { return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=UTF-8", "Cache-Control": "no-store", "Access-Control-Allow-Origin": WEBSITE_URL } }); }
 function escapeHtml(value) { return String(value).replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
 
 function adminPage() {
