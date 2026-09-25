@@ -276,7 +276,38 @@ async function saveRating(request, env) {
     update.append("metadata[rated_at]", new Date().toISOString());
     const save = await stripeRequest(env, `/checkout/sessions/${encodeURIComponent(sessionId)}`, "POST", update);
     if (!save.ok) return json({ error: "We couldn't save the rating. Please try again." }, 500);
-    return json({ success: true });
+
+    let notificationSent = false;
+    if (env.RESEND_API_KEY) {
+      const customerName = String(session.metadata?.customer_name || "Customer");
+      const customerEmail = String(session.metadata?.customer_email || "");
+      const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+      const notificationText = `New customer rating for Sparkle Star Cleaning
+
+Rating: ${stars} (${rating}/5)
+Customer: ${customerName}
+Customer email: ${customerEmail}
+Payment: ${sessionId}
+
+Comment:
+${comment || "(No comment)"}
+
+This rating has been saved to the Stripe Checkout Session metadata.
+`;
+      const notificationResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Sparkle Star Cleaning <hello@sparklestarcleaning.co.uk>",
+          to: ["hello@sparklestarcleaning.co.uk"],
+          subject: "Sparkle Star Cleaning – New Customer Rating",
+          text: notificationText
+        })
+      });
+      notificationSent = notificationResponse.ok;
+    }
+
+    return json({ success: true, email_notification_sent: notificationSent });
   } catch { return json({ error: "Unable to save the rating." }, 500); }
 }
 
