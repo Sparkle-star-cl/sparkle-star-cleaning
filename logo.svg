@@ -1,12 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" role="img" aria-labelledby="title desc">
-<title id="title">Sparkle Star Cleaning</title><desc id="desc">Sparkle Star Cleaning logo with gold and blue sparkles, navy script wordmark, blue cleaning text and swoosh.</desc>
-<rect width="900" height="420" fill="white"/>
-<g transform="translate(0 10)">
-<path d="M455 35 C480 85 505 105 555 125 C505 145 480 170 455 220 C430 170 405 145 355 125 C405 105 430 85 455 35Z" fill="#F4BF45"/>
-<path d="M455 83 L466 114 L497 125 L466 136 L455 167 L444 136 L413 125 L444 114Z" fill="white"/>
-<path d="M555 75 C566 98 578 109 601 120 C578 131 566 142 555 165 C544 142 532 131 509 120 C532 109 544 98 555 75Z" fill="#58B7EE"/>
-<path d="M520 150 C528 167 537 176 554 184 C537 192 528 201 520 218 C512 201 503 192 486 184 C503 176 512 167 520 150Z" fill="#7CC7F2"/>
-<text x="450" y="285" text-anchor="middle" font-family="Brush Script MT, Segoe Script, cursive" font-size="92" font-style="italic" font-weight="600" fill="#123D7A">Sparkle Star</text>
-<text x="450" y="340" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="31" letter-spacing="13" font-weight="700" fill="#36A7E8">CLEANING</text>
-<path d="M250 370 C360 335 540 335 650 370" fill="none" stroke="#55B8ED" stroke-width="8" stroke-linecap="round"/>
-</g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+<title id="title">Sparkle Star Cleaning</title>
+<desc id="desc">Sparkle Star Cleaning logo in a warm and friendly style with gold sparkles, navy script lettering, sky-blue cleaning text, and a gold swoosh.</desc>
+<g transform="translate(0 8)">
+  <path d="M500 28 C523 82 548 107 602 130 C548 153 523 178 500 232 C477 178 452 153 398 130 C452 107 477 82 500 28Z" fill="#F4BF45"/>
+  <path d="M500 82 L512 118 L548 130 L512 142 L500 178 L488 142 L452 130 L488 118Z" fill="#FFFDF8"/>
+  <path d="M610 70 C621 94 634 107 658 118 C634 129 621 142 610 166 C599 142 586 129 562 118 C586 107 599 94 610 70Z" fill="#F7C95A"/>
+  <path d="M656 153 C664 171 674 181 692 189 C674 197 664 207 656 225 C648 207 638 197 620 189 C638 181 648 171 656 153Z" fill="#F8D36F"/>
+  <text x="500" y="326" text-anchor="middle" font-family="'Brush Script MT','Segoe Script','URW Chancery L',cursive" font-size="116" font-style="italic" font-weight="600" fill="#123D7A">Sparkle Star</text>
+  <text x="500" y="389" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="36" letter-spacing="15" font-weight="700" fill="#43AEEA">CLEANING</text>
+  <path d="M275 430 C390 394 610 394 725 430" fill="none" stroke="#F4BF45" stroke-width="9" stroke-linecap="round"/>
+</g>
+</svg>
