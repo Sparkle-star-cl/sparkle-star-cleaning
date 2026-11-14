@@ -36,7 +36,8 @@ export default {
         const startTime = String(body.startTime || "");
         const hours = Number(body.hours);
         const amount = Number(body.amount);
-        const rates = { regular: 20, oneoff: 23, deep: 25 };
+        const regularRate = Number(body.regularRate || 15);
+        const rates = { regular: [15, 18].includes(regularRate) ? regularRate : 0, oneoff: 23, deep: 25 };
         const BOOKINGS_OPEN_DATE = "2026-10-08";
 
         if (!customerName || !phone || !email || !date || !startTime) return json({ error: "Please complete all booking details." }, 400);
